@@ -191,10 +191,7 @@ function getTheme(isDark) {
         input: "bg-white border-neutral-300 text-zinc-900 placeholder-zinc-400",
         pill: "bg-white border-neutral-200", pillActive: "bg-red-600 border-red-600 text-white",
       };
-}
-
-/* ============================== SMALL PIECES ============================== */
-
+       }
 function LiveDot({ size = "w-1.5 h-1.5" }) {
   return (
     <span className="relative inline-flex">
@@ -280,8 +277,7 @@ function ChannelCard({ channel, now, followed, onToggleFollow, onOpen, t }) {
       </div>
     </div>
   );
-}
-
+        }
 function SectionRow({ title, icon: Icon, channels, now, followed, onToggleFollow, onOpen, t }) {
   if (!channels.length) return null;
   return (
@@ -359,9 +355,6 @@ function StatCard({ icon: Icon, label, value, sub, t }) {
     </div>
   );
 }
-
-/* ============================== NAV ============================== */
-
 function TopNav({ t, isDark, setIsDark, view, setView, role, setRole, query, setQuery, onSearchSubmit, mobileOpen, setMobileOpen }) {
   const roles = [
     { id: "viewer", label: "Viewer" },
@@ -387,4 +380,688 @@ function TopNav({ t, isDark, setIsDark, view, setView, role, setRole, query, set
               placeholder="Search channels..."
               className={cx("w-full text-sm rounded-full pl-9 pr-4 py-2 border outline-none focus:border-red-500 transition", t.input)}
             />
-          </fo
+          </form>
+
+          <div className="hidden lg:flex items-center gap-1 shrink-0">
+            {roles.map((r) => (
+              <button key={r.id}
+                onClick={() => { setRole(r.id); setView(r.id === "viewer" ? "home" : r.id === "owner" ? "dashboard" : "admin"); }}
+                className={cx("text-xs font-semibold px-3 py-1.5 rounded-full border transition",
+                  role === r.id ? "bg-red-600 border-red-600 text-white" : cx(t.pill, t.textMuted))}>
+                {r.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setIsDark(!isDark)}
+              className={cx("p-2 rounded-full border transition", t.border, t.surfaceHover, t.textMuted)}>
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <button className={cx("hidden sm:flex p-2 rounded-full border transition", t.border, t.surfaceHover, t.textMuted)}>
+              <Bell className="w-4 h-4" />
+            </button>
+            <div className="hidden sm:flex w-8 h-8 rounded-full bg-zinc-700 items-center justify-center text-white text-xs font-bold">
+              <User className="w-4 h-4" />
+            </div>
+            <button className="lg:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)}>
+              {mobileOpen ? <X className={cx("w-5 h-5", t.text)} /> : <Menu className={cx("w-5 h-5", t.text)} />}
+            </button>
+          </div>
+        </div>
+
+        {mobileOpen && (
+          <div className="lg:hidden pb-4 space-y-3">
+            <form onSubmit={onSearchSubmit} className="relative">
+              <Search className={cx("w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2", t.textFaint)} />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search channels..."
+                className={cx("w-full text-sm rounded-full pl-9 pr-4 py-2 border outline-none focus:border-red-500", t.input)}
+              />
+            </form>
+            <div className="flex gap-2">
+              {roles.map((r) => (
+                <button key={r.id}
+                  onClick={() => { setRole(r.id); setView(r.id === "viewer" ? "home" : r.id === "owner" ? "dashboard" : "admin"); setMobileOpen(false); }}
+                  className={cx("flex-1 text-xs font-semibold px-3 py-2 rounded-full border transition",
+                    role === r.id ? "bg-red-600 border-red-600 text-white" : cx(t.pill, t.textMuted))}>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function CategoryChips({ t, active, onSelect }) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 mb-8 scrollbar-none">
+      <button onClick={() => onSelect(null)}
+        className={cx("shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-full border transition",
+          active === null ? "bg-red-600 border-red-600 text-white" : cx(t.pill, t.textMuted))}>
+        All Channels
+      </button>
+      {CATEGORIES.map((cat) => {
+        const Icon = CATEGORY_ICON[cat.id];
+        return (
+          <button key={cat.id} onClick={() => onSelect(cat.id)}
+            className={cx("shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-full border transition",
+              active === cat.id ? "bg-red-600 border-red-600 text-white" : cx(t.pill, t.textMuted))}>
+            <Icon className="w-3.5 h-3.5" /> {cat.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+                      }
+function HomeView({ t, now, followed, onToggleFollow, onOpen, category, setCategory, allChannels }) {
+  const pool = category ? allChannels.filter((c) => c.category === category) : allChannels;
+  const featured = pool.find((c) => c.featured) || pool[0];
+  const trending = pool.filter((c) => c.trending);
+  const fresh = pool.filter((c) => c.isNew);
+  const recommended = [...pool].sort((a, b) => b.followers - a.followers).slice(0, 5);
+
+  if (!pool.length) {
+    return <div className={cx("text-center py-24", t.textMuted)}>No channels in this category yet.</div>;
+  }
+
+  return (
+    <div>
+      <CategoryChips t={t} active={category} onSelect={setCategory} />
+
+      {featured && (
+        <section className="mb-10">
+          <div className={cx("rounded-2xl border overflow-hidden grid md:grid-cols-2", t.border, t.surface)}>
+            <div className="p-6 sm:p-8 flex flex-col justify-center">
+              <span className="text-[10px] tracking-widest font-bold text-red-500 mb-2">FEATURED CHANNEL</span>
+              <div className="flex items-center gap-2 mb-2">
+                <ChNoBadge chNo={featured.chNo} t={t} />
+                <LiveDot /><span className={cx("text-[11px] font-semibold", t.textMuted)}>ON AIR</span>
+              </div>
+              <h1 className={cx("font-display text-4xl sm:text-5xl leading-tight", t.text)}>{featured.name}</h1>
+              <p className={cx("mt-2 text-sm", t.textMuted)}>{featured.tagline}</p>
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => onOpen(featured.id)}
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold px-5 py-2.5 rounded-full transition">
+                  <Play className="w-4 h-4" fill="white" /> Watch Live
+                </button>
+                <button onClick={() => onToggleFollow(featured.id)}
+                  className={cx("flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-full border transition", t.border, t.surfaceHover, t.text)}>
+                  <Heart className="w-4 h-4" fill={followed.has(featured.id) ? "currentColor" : "none"} />
+                  {followed.has(featured.id) ? "Following" : "Follow"}
+                </button>
+              </div>
+            </div>
+            <div className="p-4 sm:p-6 flex items-center">
+              <ChannelScreen big channel={{ ...featured, currentTitle: getNowInfo(featured.schedule, now).current.title }} t={t} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      <AdBanner t={t} />
+
+      <SectionRow title="Trending Now" icon={TrendingUp} channels={trending} now={now} followed={followed} onToggleFollow={onToggleFollow} onOpen={onOpen} t={t} />
+      <SectionRow title="New Channels" icon={Sparkles} channels={fresh} now={now} followed={followed} onToggleFollow={onToggleFollow} onOpen={onOpen} t={t} />
+      <SectionRow title="Recommended For You" icon={Zap} channels={recommended} now={now} followed={followed} onToggleFollow={onToggleFollow} onOpen={onOpen} t={t} />
+      <SectionRow title="All Channels" icon={Tv} channels={pool} now={now} followed={followed} onToggleFollow={onToggleFollow} onOpen={onOpen} t={t} />
+    </div>
+  );
+}
+
+function SearchView({ t, query, results, now, followed, onToggleFollow, onOpen }) {
+  return (
+    <div>
+      <p className={cx("text-sm mb-6", t.textMuted)}>
+        {results.length} result{results.length !== 1 ? "s" : ""} for <span className={t.text}>&ldquo;{query}&rdquo;</span>
+      </p>
+      {results.length ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {results.map((c) => (
+            <ChannelCard key={c.id} channel={c} now={now} followed={followed} onToggleFollow={onToggleFollow} onOpen={onOpen} t={t} />
+          ))}
+        </div>
+      ) : (
+        <div className={cx("text-center py-24", t.textMuted)}>No channels match your search.</div>
+      )}
+    </div>
+  );
+}
+
+function ChannelView({ t, channel, now, followed, onToggleFollow, allChannels, onOpen }) {
+  const [tab, setTab] = useState("schedule");
+  if (!channel) return <div className={cx("text-center py-24", t.textMuted)}>Channel not found.</div>;
+  const info = getNowInfo(channel.schedule, now);
+  const related = allChannels.filter((c) => c.category === channel.category && c.id !== channel.id).slice(0, 5);
+  const isFollowed = followed.has(channel.id);
+  const Icon = CATEGORY_ICON[channel.category];
+
+  return (
+    <div>
+      <ChannelScreen big channel={{ ...channel, currentTitle: info.current.title }} t={t} />
+
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mt-5">
+        <div className="flex items-start gap-3">
+          <div className={cx("w-14 h-14 rounded-xl bg-gradient-to-br flex items-center justify-center shrink-0 font-display text-xl text-white", channel.grad[0], channel.grad[1])}>
+            {channel.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className={cx("font-display text-3xl", t.text)}>{channel.name}</h1>
+              <ChNoBadge chNo={channel.chNo} t={t} />
+            </div>
+            <p className={cx("text-sm mt-0.5", t.textMuted)}>{channel.tagline}</p>
+            <div className={cx("flex items-center gap-3 mt-1.5 text-xs", t.textFaint)}>
+              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{formatCount(channel.viewersBase)} watching</span>
+              <span>{formatCount(channel.followers)} followers</span>
+            </div>
+          </div>
+        </div>
+        <button onClick={() => onToggleFollow(channel.id)}
+          className={cx("flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-full border transition shrink-0",
+            isFollowed ? "bg-red-600 border-red-600 text-white" : cx(t.border, t.surfaceHover, t.text))}>
+          <Heart className="w-4 h-4" fill={isFollowed ? "currentColor" : "none"} />
+          {isFollowed ? "Following" : "Follow"}
+        </button>
+      </div>
+
+      <div className={cx("mt-6 rounded-xl border p-4", t.border, t.surface)}>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <span className="text-[10px] font-bold tracking-widest text-red-500">ON NOW</span>
+            <p className={cx("font-display text-xl", t.text)}>{info.current.title}</p>
+          </div>
+          <div className="text-right">
+            <span className={cx("text-xs", t.textMuted)}>up next</span>
+            <p className={cx("text-sm font-semibold", t.text)}>{info.next.title}</p>
+          </div>
+        </div>
+        <div className={cx("h-1.5 rounded-full overflow-hidden", t.border, "border bg-black/10")}>
+          <div className="h-full bg-red-600" style={{ width: `${info.progress}%` }} />
+        </div>
+        <p className={cx("text-[11px] mt-1.5", t.textFaint)}>{info.minutesLeft} min remaining in this program</p>
+      </div>
+
+      <div className="flex gap-2 mt-8 mb-4">
+        {["schedule", "about"].map((tb) => (
+          <button key={tb} onClick={() => setTab(tb)}
+            className={cx("text-xs font-semibold px-4 py-1.5 rounded-full border capitalize transition",
+              tab === tb ? "bg-red-600 border-red-600 text-white" : cx(t.pill, t.textMuted))}>
+            {tb}
+          </button>
+        ))}
+      </div>
+
+      {tab === "schedule" ? (
+        <div className={cx("rounded-xl border divide-y", t.border, t.surface)}>
+          {channel.schedule.map((slot, i) => {
+            const isNow = i === info.currentIdx;
+            return (
+              <div key={i} className={cx("flex items-center gap-4 px-4 py-3", isNow && "bg-red-600/10")}>
+                <span className={cx("font-mono text-xs w-14 shrink-0", isNow ? "text-red-500 font-bold" : t.textMuted)}>{slot.time}</span>
+                <span className={cx("text-sm flex-1", isNow ? cx(t.text, "font-semibold") : t.textMuted)}>{slot.title}</span>
+                {isNow && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-red-500 shrink-0">
+                    <LiveDot size="w-1 h-1" /> ON NOW
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className={cx("rounded-xl border p-5", t.border, t.surface)}>
+          <p className={cx("text-sm leading-relaxed", t.textMuted)}>{channel.desc}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5">
+            <div>
+              <span className={cx("text-[11px]", t.textFaint)}>Category</span>
+              <p className={cx("text-sm font-semibold flex items-center gap-1.5 mt-0.5", t.text)}>
+                <Icon className="w-3.5 h-3.5 text-red-500" />
+                {CATEGORIES.find((c) => c.id === channel.category)?.label}
+              </p>
+            </div>
+            <div>
+              <span className={cx("text-[11px]", t.textFaint)}>Owner</span>
+              <p className={cx("text-sm font-semibold mt-0.5", t.text)}>{channel.owner}</p>
+            </div>
+            <div>
+              <span className={cx("text-[11px]", t.textFaint)}>Followers</span>
+              <p className={cx("text-sm font-semibold mt-0.5", t.text)}>{formatCount(channel.followers)}</p>
+            </div>
+            <div>
+              <span className={cx("text-[11px]", t.textFaint)}>Avg. Viewers</span>
+              <p className={cx("text-sm font-semibold mt-0.5", t.text)}>{formatCount(channel.viewersBase)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {related.length > 0 && (
+        <div className="mt-10">
+          <SectionRow title={`More in ${CATEGORIES.find((c) => c.id === channel.category)?.label}`} channels={related} now={now} followed={followed} onToggleFollow={onToggleFollow} onOpen={onOpen} t={t} />
+        </div>
+      )}
+    </div>
+  );
+                                }
+function OwnerDashboard({ t, isDark, ownedChannels, now, addChannel }) {
+  const [selectedId, setSelectedId] = useState(ownedChannels[0]?.id || null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ name: "", category: "movies", tagline: "" });
+  const [scheduleEdits, setScheduleEdits] = useState({});
+
+  const selected = ownedChannels.find((c) => c.id === selectedId) || ownedChannels[0];
+  const schedule = scheduleEdits[selected?.id] || selected?.schedule || [];
+
+  function moveItem(idx, dir) {
+    const arr = [...schedule];
+    const target = idx + dir;
+    if (target < 0 || target >= arr.length) return;
+    [arr[idx], arr[target]] = [arr[target], arr[idx]];
+    setScheduleEdits((s) => ({ ...s, [selected.id]: arr }));
+  }
+  function removeItem(idx) {
+    const arr = schedule.filter((_, i) => i !== idx);
+    setScheduleEdits((s) => ({ ...s, [selected.id]: arr }));
+  }
+
+  const weekViews = useMemo(() => {
+    if (!selected) return [];
+    return Array.from({ length: 7 }, (_, i) => Math.round(selected.viewersBase * (10 + i * 1.3 + (i % 3))));
+  }, [selected]);
+  const maxView = Math.max(...weekViews, 1);
+  const dailyRevenue = selected ? (selected.followers * 0.0004 + selected.viewersBase * 0.006).toFixed(2) : "0.00";
+
+  function handleCreate(e) {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    addChannel({ ...form });
+    setForm({ name: "", category: "movies", tagline: "" });
+    setShowCreate(false);
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className={cx("font-display text-3xl", t.text)}>Channel Owner Dashboard</h1>
+          <p className={cx("text-sm", t.textMuted)}>Manage your channels, schedules and revenue.</p>
+        </div>
+        <button onClick={() => setShowCreate(!showCreate)}
+          className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold px-4 py-2.5 rounded-full transition">
+          <Plus className="w-4 h-4" /> Create Channel
+        </button>
+      </div>
+
+      {showCreate && (
+        <form onSubmit={handleCreate} className={cx("rounded-xl border p-5 mb-8 grid sm:grid-cols-3 gap-4", t.border, t.surface)}>
+          <div className="sm:col-span-1">
+            <label className={cx("text-xs font-semibold", t.textMuted)}>Channel name</label>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className={cx("w-full mt-1 text-sm rounded-lg px-3 py-2 border outline-none focus:border-red-500", t.input)} placeholder="e.g. Midnight Signal" />
+          </div>
+          <div>
+            <label className={cx("text-xs font-semibold", t.textMuted)}>Category</label>
+            <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className={cx("w-full mt-1 text-sm rounded-lg px-3 py-2 border outline-none focus:border-red-500", t.input)}>
+              {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={cx("text-xs font-semibold", t.textMuted)}>Tagline</label>
+            <input value={form.tagline} onChange={(e) => setForm({ ...form, tagline: e.target.value })}
+              className={cx("w-full mt-1 text-sm rounded-lg px-3 py-2 border outline-none focus:border-red-500", t.input)} placeholder="Short description" />
+          </div>
+          <div className="sm:col-span-3 flex gap-2">
+            <div className={cx("flex-1 flex items-center gap-2 text-xs rounded-lg border px-3 py-2", t.border, t.textFaint)}>
+              <Upload className="w-3.5 h-3.5" /> Logo & banner upload (demo — no file needed)
+            </div>
+            <button type="submit" className="bg-red-600 hover:bg-red-500 text-white text-sm font-semibold px-5 py-2 rounded-lg transition">
+              Launch Channel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {!selected ? (
+        <div className={cx("text-center py-24", t.textMuted)}>You don't own any channels yet — create one to get started.</div>
+      ) : (
+        <>
+          <div className="flex gap-2 mb-6 overflow-x-auto">
+            {ownedChannels.map((c) => (
+              <button key={c.id} onClick={() => setSelectedId(c.id)}
+                className={cx("shrink-0 flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full border transition",
+                  selected.id === c.id ? "bg-red-600 border-red-600 text-white" : cx(t.pill, t.textMuted))}>
+                <ChNoBadge chNo={c.chNo} t={selected.id === c.id ? { border: "border-white/40", textMuted: "text-white" } : t} /> {c.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <StatCard icon={Eye} label="Total Views" value={formatCount(selected.viewersBase * 340)} sub="last 30 days" t={t} />
+            <StatCard icon={Users} label="Followers" value={formatCount(selected.followers)} sub="+2.4% this week" t={t} />
+            <StatCard icon={Clock} label="Watch Time" value={formatCount(selected.viewersBase * 18) + " hrs"} sub="last 30 days" t={t} />
+            <StatCard icon={DollarSign} label="Ad Revenue" value={"$" + dailyRevenue} sub="estimated / day" t={t} />
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div className={cx("rounded-xl border p-5", t.border, t.surface)}>
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="w-4 h-4 text-red-500" />
+                <h3 className={cx("font-display text-lg", t.text)}>Views — Last 7 Days</h3>
+              </div>
+              <div className="flex items-end gap-2.5 h-36">
+                {weekViews.map((v, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                    <div className="w-full bg-red-600/80 hover:bg-red-500 rounded-t transition" style={{ height: `${(v / maxView) * 100}%` }} />
+                    <span className={cx("text-[10px]", t.textFaint)}>{["M", "T", "W", "T", "F", "S", "S"][i]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className={cx("rounded-xl border p-5", t.border, t.surface)}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Edit3 className="w-4 h-4 text-red-500" />
+                  <h3 className={cx("font-display text-lg", t.text)}>Broadcast Schedule</h3>
+                </div>
+                {scheduleEdits[selected.id] && (
+                  <button onClick={() => setScheduleEdits((s) => ({ ...s, [selected.id]: undefined }))}
+                    className={cx("flex items-center gap-1 text-[11px]", t.textMuted)}>
+                    <RotateCcw className="w-3 h-3" /> Reset
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                {schedule.map((slot, i) => (
+                  <div key={i} className={cx("flex items-center gap-2 rounded-lg border px-3 py-2", t.border)}>
+                    <span className={cx("font-mono text-xs w-12 shrink-0", t.textMuted)}>{slot.time}</span>
+                    <span className={cx("text-sm flex-1 truncate", t.text)}>{slot.title}</span>
+                    <button onClick={() => moveItem(i, -1)} className={cx("p-1 rounded", t.surfaceHover, t.textFaint)}><ArrowUp className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => moveItem(i, 1)} className={cx("p-1 rounded", t.surfaceHover, t.textFaint)}><ArrowDown className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => removeItem(i)} className={cx("p-1 rounded hover:text-red-500", t.surfaceHover, t.textFaint)}><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
+                ))}
+              </div>
+              <button className={cx("w-full mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg border", t.border, t.surfaceHover, t.textMuted)}>
+                <Upload className="w-3.5 h-3.5" /> Upload video & add to schedule
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+                     }
+function AdminPanel({ t, allChannels, removedIds, setRemovedIds, adsState, setAdsState }) {
+  const totalUsers = ADMIN_USERS.length;
+  const totalChannels = allChannels.length - removedIds.size;
+  const totalWatchHours = allChannels.reduce((s, c) => s + c.viewersBase, 0) * 24 / 1000;
+  const totalRevenue = allChannels.reduce((s, c) => s + c.followers * 0.0004 + c.viewersBase * 0.006, 0);
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1">
+        <Shield className="w-5 h-5 text-red-500" />
+        <h1 className={cx("font-display text-3xl", t.text)}>Admin Panel</h1>
+      </div>
+      <p className={cx("text-sm mb-6", t.textMuted)}>Platform-wide oversight of users, channels and advertising.</p>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard icon={Users} label="Total Users" value={formatCount(totalUsers * 18400)} sub={`${totalUsers} sampled`} t={t} />
+        <StatCard icon={Tv} label="Total Channels" value={totalChannels} sub={`${removedIds.size} removed`} t={t} />
+        <StatCard icon={Clock} label="Watch Hours" value={formatCount(Math.round(totalWatchHours)) + "K"} sub="last 30 days" t={t} />
+        <StatCard icon={DollarSign} label="Platform Revenue" value={"$" + formatCount(Math.round(totalRevenue * 30))} sub="estimated / month" t={t} />
+      </div>
+
+      <div className={cx("rounded-xl border mb-8 overflow-hidden", t.border, t.surface)}>
+        <div className="px-5 py-3 border-b">
+          <h3 className={cx("font-display text-lg", t.text)}>Users</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className={cx("text-left text-[11px] uppercase tracking-wide", t.textFaint)}>
+                <th className="px-5 py-2 font-semibold">Name</th>
+                <th className="px-5 py-2 font-semibold">Email</th>
+                <th className="px-5 py-2 font-semibold">Role</th>
+                <th className="px-5 py-2 font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ADMIN_USERS.map((u) => (
+                <tr key={u.id} className={cx("border-t", t.border)}>
+                  <td className={cx("px-5 py-2.5 font-medium", t.text)}>{u.name}</td>
+                  <td className={cx("px-5 py-2.5", t.textMuted)}>{u.email}</td>
+                  <td className={cx("px-5 py-2.5", t.textMuted)}>{u.role}</td>
+                  <td className="px-5 py-2.5">
+                    <span className={cx("text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                      u.status === "Active" ? "bg-emerald-500/15 text-emerald-500" :
+                      u.status === "Suspended" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-500")}>
+                      {u.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className={cx("rounded-xl border mb-8 overflow-hidden", t.border, t.surface)}>
+        <div className="px-5 py-3 border-b">
+          <h3 className={cx("font-display text-lg", t.text)}>Channels</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className={cx("text-left text-[11px] uppercase tracking-wide", t.textFaint)}>
+                <th className="px-5 py-2 font-semibold">Channel</th>
+                <th className="px-5 py-2 font-semibold">Category</th>
+                <th className="px-5 py-2 font-semibold">Followers</th>
+                <th className="px-5 py-2 font-semibold">Status</th>
+                <th className="px-5 py-2 font-semibold text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allChannels.map((c) => {
+                const removed = removedIds.has(c.id);
+                return (
+                  <tr key={c.id} className={cx("border-t", t.border)}>
+                    <td className={cx("px-5 py-2.5 font-medium", t.text)}>CH {c.chNo} · {c.name}</td>
+                    <td className={cx("px-5 py-2.5 capitalize", t.textMuted)}>{c.category}</td>
+                    <td className={cx("px-5 py-2.5", t.textMuted)}>{formatCount(c.followers)}</td>
+                    <td className="px-5 py-2.5">
+                      <span className={cx("text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                        removed ? "bg-red-500/15 text-red-500" : "bg-emerald-500/15 text-emerald-500")}>
+                        {removed ? "Removed" : "Live"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-2.5 text-right">
+                      <button
+                        onClick={() => setRemovedIds((s) => {
+                          const next = new Set(s);
+                          removed ? next.delete(c.id) : next.add(c.id);
+                          return next;
+                        })}
+                        className={cx("text-[11px] font-semibold px-3 py-1 rounded-full border transition",
+                          removed ? "border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10" : "border-red-500/40 text-red-500 hover:bg-red-500/10")}>
+                        {removed ? "Restore" : "Remove"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className={cx("rounded-xl border overflow-hidden", t.border, t.surface)}>
+        <div className="px-5 py-3 border-b">
+          <h3 className={cx("font-display text-lg", t.text)}>Advertisements</h3>
+        </div>
+        <div className="divide-y">
+          {adsState.map((ad) => (
+            <div key={ad.id} className={cx("flex items-center justify-between px-5 py-3", t.border)}>
+              <div>
+                <p className={cx("text-sm font-semibold", t.text)}>{ad.title}</p>
+                <p className={cx("text-xs", t.textFaint)}>{ad.subtitle} · {formatCount(ad.id * 84210)} impressions</p>
+              </div>
+              <button
+                onClick={() => setAdsState((prev) => prev.map((a) => a.id === ad.id ? { ...a, active: !a.active } : a))}
+                className={cx("flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full border transition",
+                  ad.active ? "border-emerald-500/40 text-emerald-500" : "border-zinc-500/40 text-zinc-500")}>
+                {ad.active ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                {ad.active ? "Active" : "Paused"}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+            }
+export default function TeleCastApp() {
+  const [isDark, setIsDark] = useState(true);
+  const [view, setView] = useState("home");
+  const [role, setRole] = useState("viewer");
+  const [category, setCategory] = useState(null);
+  const [query, setQuery] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedChannelId, setSelectedChannelId] = useState(null);
+  const [followed, setFollowed] = useState(new Set(["full-court", "wire-report"]));
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [now, setNow] = useState(new Date());
+  const [createdChannels, setCreatedChannels] = useState([]);
+  const [removedIds, setRemovedIds] = useState(new Set());
+  const [adsState, setAdsState] = useState(ADS.map((a) => ({ ...a, active: true })));
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  const t = getTheme(isDark);
+
+  const allChannels = useMemo(() => {
+    const created = createdChannels.map((c, i) => ({
+      id: `custom-${i}-${c.name.toLowerCase().replace(/\s+/g, "-")}`,
+      chNo: 800 + i,
+      name: c.name,
+      category: c.category,
+      tagline: c.tagline || "A brand new TeleCast channel.",
+      followers: 0,
+      viewersBase: Math.floor(Math.random() * 40) + 5,
+      owner: "You",
+      desc: `${c.name} just launched on TeleCast. ${c.tagline || ""}`,
+      grad: ["from-red-900", "to-zinc-950"],
+      isNew: true,
+      isLive: true,
+      schedule: buildSchedule(c.category, i % 3),
+      isMine: true,
+    }));
+    return [...CHANNELS, ...created].filter((c) => !removedIds.has(c.id));
+  }, [createdChannels, removedIds]);
+
+  const ownedChannels = allChannels.filter((c) => MY_CHANNEL_IDS.includes(c.id) || c.isMine);
+
+  function toggleFollow(id) {
+    setFollowed((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function openChannel(id) {
+    setSelectedChannelId(id);
+    setView("channel");
+    window.scrollTo?.({ top: 0, behavior: "smooth" });
+  }
+
+  function handleSearchSubmit(e) {
+    e.preventDefault();
+    setSearchTerm(query);
+    setView("search");
+  }
+
+  const searchResults = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return [];
+    return allChannels.filter((c) =>
+      c.name.toLowerCase().includes(q) || c.category.includes(q) || c.tagline.toLowerCase().includes(q));
+  }, [searchTerm, allChannels]);
+
+  const selectedChannel = allChannels.find((c) => c.id === selectedChannelId);
+
+  return (
+    <div className={cx("min-h-screen font-body transition-colors", t.bg, t.text)}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+        .font-display { font-family: 'Bebas Neue', 'Inter', sans-serif; }
+        .font-body { font-family: 'Inter', sans-serif; }
+        .font-mono, .font-mono * { font-family: 'JetBrains Mono', monospace; }
+        @keyframes screenshift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-screenshift { background-size: 200% 200%; animation: screenshift 9s ease-in-out infinite; }
+        @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .animate-marquee { animation: marquee 32s linear infinite; width: max-content; }
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+        * { scroll-behavior: smooth; }
+      `}</style>
+
+      <TopNav
+        t={t} isDark={isDark} setIsDark={setIsDark}
+        view={view} setView={setView} role={role} setRole={setRole}
+        query={query} setQuery={setQuery} onSearchSubmit={handleSearchSubmit}
+        mobileOpen={mobileOpen} setMobileOpen={setMobileOpen}
+      />
+
+      {view === "home" && <Ticker channels={allChannels} now={now} t={t} />}
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        {view === "home" && (
+          <HomeView t={t} now={now} followed={followed} onToggleFollow={toggleFollow} onOpen={openChannel}
+            category={category} setCategory={setCategory} allChannels={allChannels} />
+        )}
+        {view === "search" && (
+          <SearchView t={t} query={searchTerm} results={searchResults} now={now} followed={followed} onToggleFollow={toggleFollow} onOpen={openChannel} />
+        )}
+        {view === "channel" && (
+          <ChannelView t={t} channel={selectedChannel} now={now} followed={followed} onToggleFollow={toggleFollow} allChannels={allChannels} onOpen={openChannel} />
+        )}
+        {view === "dashboard" && (
+          <OwnerDashboard t={t} isDark={isDark} ownedChannels={ownedChannels} now={now}
+            addChannel={(c) => { setCreatedChannels((prev) => [...prev, c]); }} />
+        )}
+        {view === "admin" && (
+          <AdminPanel t={t} allChannels={[...CHANNELS, ...createdChannels.map((c, i) => ({
+            id: `custom-${i}-${c.name.toLowerCase().replace(/\s+/g, "-")}`, chNo: 800 + i, name: c.name,
+            category: c.category, followers: 0, viewersBase: 10, owner: "You",
+          }))]} removedIds={removedIds} setRemovedIds={setRemovedIds} adsState={adsState} setAdsState={setAdsState} />
+        )}
+      </main>
+
+      <footer className={cx("border-t mt-12", t.border)}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Antenna className="w-4 h-4 text-red-500" />
+            <span className={cx("font-display text-lg", t.text)}>TeleCast</span>
+          </div>
+          <p className={cx("text-xs", t.textFaint)}>Channels play on their own schedule — just tune in. Demo build with sample data.</p>
+        </div>
+      </footer>
+    </div>
+  );
+                                        }
