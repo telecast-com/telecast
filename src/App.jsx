@@ -314,7 +314,7 @@ function Ticker({ channels, now, t }) {
   );
 }
 
-function AdBanner({ t }) {function Ticker({ channels, now, t }) {
+function Ticker({ channels, now, t }) {
   const items = useMemo(() => {
     const trending = channels.filter((c) => c.trending).slice(0, 6);
     return trending.map((c) => {
@@ -332,6 +332,7 @@ function AdBanner({ t }) {function Ticker({ channels, now, t }) {
     </div>
   );
 }
+  function AdBanner({ t }) {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setIdx((i) => (i + 1) % ADS.length), 6000);
