@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { supabase } from "./supabaseClient.js";
 import {
   Search, Sun, Moon, Play, Users, TrendingUp, Sparkles, Clock,
   Plus, Upload, BarChart3, DollarSign,
@@ -145,7 +146,6 @@ const ADMIN_USERS = [
 /* ============================== HELPERS ============================== */
 
 function cx(...a) { return a.filter(Boolean).join(" "); }
-
 function formatCount(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
   if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "K";
@@ -191,8 +191,7 @@ function getTheme(isDark) {
         input: "bg-white border-neutral-300 text-zinc-900 placeholder-zinc-400",
         pill: "bg-white border-neutral-200", pillActive: "bg-red-600 border-red-600 text-white",
       };
-       }
-function LiveDot({ size = "w-1.5 h-1.5" }) {
+  function LiveDot({ size = "w-1.5 h-1.5" }) {
   return (
     <span className="relative inline-flex">
       <span className={cx(size, "rounded-full bg-red-500 animate-ping absolute inline-flex opacity-75")} />
@@ -277,7 +276,8 @@ function ChannelCard({ channel, now, followed, onToggleFollow, onOpen, t }) {
       </div>
     </div>
   );
-        }
+}
+
 function SectionRow({ title, icon: Icon, channels, now, followed, onToggleFollow, onOpen, t }) {
   if (!channels.length) return null;
   return (
@@ -291,7 +291,7 @@ function SectionRow({ title, icon: Icon, channels, now, followed, onToggleFollow
           <ChannelCard key={c.id} channel={c} now={now} followed={followed} onToggleFollow={onToggleFollow} onOpen={onOpen} t={t} />
         ))}
       </div>
-    </section>
+      </section>
   );
 }
 
@@ -355,7 +355,71 @@ function StatCard({ icon: Icon, label, value, sub, t }) {
     </div>
   );
 }
-function TopNav({ t, isDark, setIsDark, view, setView, role, setRole, query, setQuery, onSearchSubmit, mobileOpen, setMobileOpen }) {
+    }
+function AuthModal({ t, onClose }) {
+  const [mode, setMode] = useState("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setMessage("Muvaffaqiyatli! Emailingizni tekshiring va tasdiqlash havolasini bosing.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        onClose();
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className={cx("w-full max-w-sm rounded-2xl border p-6", t.border, t.surface)} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className={cx("font-display text-2xl", t.text)}>{mode === "signin" ? "Kirish" : "Ro'yxatdan o'tish"}</h2>
+          <button onClick={onClose} className={t.textMuted}><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className={cx("text-xs font-semibold", t.textMuted)}>Email</label>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+              className={cx("w-full mt-1 text-sm rounded-lg px-3 py-2 border outline-none focus:border-red-500", t.input)} />
+          </div>
+          <div>
+            <label className={cx("text-xs font-semibold", t.textMuted)}>Parol</label>
+            <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
+              className={cx("w-full mt-1 text-sm rounded-lg px-3 py-2 border outline-none focus:border-red-500", t.input)} />
+          </div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          {message && <p className="text-xs text-emerald-500">{message}</p>}
+          <button type="submit" disabled={loading}
+            className="w-full bg-red-600 hover:bg-red-500 text-white text-sm font-semibold py-2.5 rounded-lg transition disabled:opacity-50">
+            {loading ? "Kuting..." : mode === "signin" ? "Kirish" : "Ro'yxatdan o'tish"}
+          </button>
+        </form>
+        <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(""); setMessage(""); }}
+          className={cx("w-full text-center text-xs mt-4", t.textMuted)}>
+          {mode === "signin" ? "Hisobingiz yo'qmi? Ro'yxatdan o'ting" : "Hisobingiz bormi? Kiring"}
+        </button>
+      </div>
+    </div>
+  );
+}
+function TopNav({ t, isDark, setIsDark, view, setView, role, setRole, query, setQuery, onSearchSubmit, mobileOpen, setMobileOpen, user, onOpenAuth, onSignOut }) {
   const roles = [
     { id: "viewer", label: "Viewer" },
     { id: "owner", label: "Owner" },
@@ -371,7 +435,6 @@ function TopNav({ t, isDark, setIsDark, view, setView, role, setRole, query, set
             </div>
             <span className={cx("font-display text-2xl tracking-wide", t.text)}>TeleCast</span>
           </button>
-
           <form onSubmit={onSearchSubmit} className="hidden md:flex flex-1 max-w-md relative">
             <Search className={cx("w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2", t.textFaint)} />
             <input
@@ -401,9 +464,17 @@ function TopNav({ t, isDark, setIsDark, view, setView, role, setRole, query, set
             <button className={cx("hidden sm:flex p-2 rounded-full border transition", t.border, t.surfaceHover, t.textMuted)}>
               <Bell className="w-4 h-4" />
             </button>
-            <div className="hidden sm:flex w-8 h-8 rounded-full bg-zinc-700 items-center justify-center text-white text-xs font-bold">
-              <User className="w-4 h-4" />
-            </div>
+            {user ? (
+              <button onClick={onSignOut} title="Chiqish"
+                className="hidden sm:flex w-8 h-8 rounded-full bg-red-600 items-center justify-center text-white text-xs font-bold">
+                {user.email[0].toUpperCase()}
+              </button>
+            ) : (
+              <button onClick={onOpenAuth}
+                className="hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-red-600 text-white">
+                <User className="w-3.5 h-3.5" /> Kirish
+              </button>
+            )}
             <button className="lg:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)}>
               {mobileOpen ? <X className={cx("w-5 h-5", t.text)} /> : <Menu className={cx("w-5 h-5", t.text)} />}
             </button>
@@ -431,6 +502,17 @@ function TopNav({ t, isDark, setIsDark, view, setView, role, setRole, query, set
                 </button>
               ))}
             </div>
+            {user ? (
+              <button onClick={onSignOut}
+                className="w-full text-xs font-semibold px-3 py-2 rounded-full border border-red-600 text-red-500">
+                Chiqish ({user.email})
+              </button>
+            ) : (
+              <button onClick={onOpenAuth}
+                className="w-full text-xs font-semibold px-3 py-2 rounded-full bg-red-600 text-white">
+                Kirish / Ro'yxatdan o'tish
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -458,7 +540,7 @@ function CategoryChips({ t, active, onSelect }) {
       })}
     </div>
   );
-                      }
+}
 function HomeView({ t, now, followed, onToggleFollow, onOpen, category, setCategory, allChannels }) {
   const pool = category ? allChannels.filter((c) => c.category === category) : allChannels;
   const featured = pool.find((c) => c.featured) || pool[0];
@@ -647,8 +729,11 @@ function ChannelView({ t, channel, now, followed, onToggleFollow, allChannels, o
         </div>
       )}
     </div>
-  );
-                                }
+    );
+}
+
+/* ============================== OWNER DASHBOARD ============================== */
+
 function OwnerDashboard({ t, isDark, ownedChannels, now, addChannel }) {
   const [selectedId, setSelectedId] = useState(ownedChannels[0]?.id || null);
   const [showCreate, setShowCreate] = useState(false);
@@ -793,12 +878,15 @@ function OwnerDashboard({ t, isDark, ownedChannels, now, addChannel }) {
                 <Upload className="w-3.5 h-3.5" /> Upload video & add to schedule
               </button>
             </div>
-          </div>
+            </div>
         </>
       )}
     </div>
   );
-                     }
+}
+
+/* ============================== ADMIN PANEL ============================== */
+
 function AdminPanel({ t, allChannels, removedIds, setRemovedIds, adsState, setAdsState }) {
   const totalUsers = ADMIN_USERS.length;
   const totalChannels = allChannels.length - removedIds.size;
@@ -927,7 +1015,10 @@ function AdminPanel({ t, allChannels, removedIds, setRemovedIds, adsState, setAd
       </div>
     </div>
   );
-            }
+}
+
+/* ============================== APP ============================== */
+
 export default function TeleCastApp() {
   const [isDark, setIsDark] = useState(true);
   const [view, setView] = useState("home");
@@ -942,11 +1033,25 @@ export default function TeleCastApp() {
   const [createdChannels, setCreatedChannels] = useState([]);
   const [removedIds, setRemovedIds] = useState(new Set());
   const [adsState, setAdsState] = useState(ADS.map((a) => ({ ...a, active: true })));
+  const [user, setUser] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  function handleSignOut() {
+    supabase.auth.signOut();
+  }
 
   const t = getTheme(isDark);
 
@@ -1026,7 +1131,10 @@ export default function TeleCastApp() {
         view={view} setView={setView} role={role} setRole={setRole}
         query={query} setQuery={setQuery} onSearchSubmit={handleSearchSubmit}
         mobileOpen={mobileOpen} setMobileOpen={setMobileOpen}
+        user={user} onOpenAuth={() => setShowAuth(true)} onSignOut={handleSignOut}
       />
+
+      {showAuth && <AuthModal t={t} onClose={() => setShowAuth(false)} />}
 
       {view === "home" && <Ticker channels={allChannels} now={now} t={t} />}
 
@@ -1064,4 +1172,4 @@ export default function TeleCastApp() {
       </footer>
     </div>
   );
-                                        }
+      }
