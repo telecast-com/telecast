@@ -314,7 +314,24 @@ function Ticker({ channels, now, t }) {
   );
 }
 
-function AdBanner({ t }) {
+function AdBanner({ t }) {function Ticker({ channels, now, t }) {
+  const items = useMemo(() => {
+    const trending = channels.filter((c) => c.trending).slice(0, 6);
+    return trending.map((c) => {
+      const info = getNowInfo(c.schedule, now);
+      return `${c.name} now airing ${info.current.title} · ${formatCount(c.viewersBase)} watching`;
+    });
+  }, [channels, now]);
+  const text = items.join("   ●   ");
+  return (
+    <div className={cx("border-y overflow-hidden", t.border, "bg-red-600")}>
+      <div className="flex whitespace-nowrap py-1.5 animate-marquee">
+        <span className="text-white text-xs font-semibold px-4 tracking-wide">{text}</span>
+        <span className="text-white text-xs font-semibold px-4 tracking-wide">{text}</span>
+      </div>
+    </div>
+  );
+}
   const [idx, setIdx] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setIdx((i) => (i + 1) % ADS.length), 6000);
